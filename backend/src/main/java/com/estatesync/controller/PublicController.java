@@ -1,0 +1,113 @@
+package com.estatesync.controller;
+
+import com.estatesync.dto.InterestRequest;
+import com.estatesync.model.Property;
+import com.estatesync.repository.PropertyRepository;
+import com.estatesync.repository.CustomerRepository;
+import com.estatesync.service.LeadService;
+import com.estatesync.service.OtpService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/public")
+public class PublicController {
+
+    private final PropertyRepository propertyRepository;
+    private final CustomerRepository customerRepository;
+    private final OtpService otpService;
+    private final LeadService leadService;
+    private final com.estatesync.security.JwtUtil jwtUtil;
+
+    public PublicController(PropertyRepository propertyRepository, CustomerRepository customerRepository, OtpService otpService, LeadService leadService, com.estatesync.security.JwtUtil jwtUtil) {
+        this.propertyRepository = propertyRepository;
+        this.customerRepository = customerRepository;
+        this.otpService = otpService;
+        this.leadService = leadService;
+        this.jwtUtil = jwtUtil;
+    }
+
+    @GetMapping("/properties")
+    public ResponseEntity<List<Property>> getProperties() {
+        return ResponseEntity.ok(propertyRepository.findAll());
+    }
+
+    @PostMapping("/send-otp")
+    public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        String phone = payload.get("phone");
+
+        if (phone != null && !phone.isEmpty()) {
+            java.util.Optional<com.estatesync.model.Customer> existing = customerRepository.findByPhone(phone);
+            if (existing.isPresent() && !existing.get().getEmail().equalsIgnoreCase(email)) {
+                return ResponseEntity.badRequest().body("PHONE_EMAIL_MISMATCH");
+            }
+        }
+
+        otpService.generateAndSendOtp(email);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/customer/verify-login")
+    public ResponseEntity<?> verifyLogin(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        String phone = payload.get("phone");
+        String otp = payload.get("otp");
+        String name = payload.get("name");
+
+        if (!otpService.verifyOtp(email, otp)) {
+            return ResponseEntity.badRequest().body("Invalid OTP");
+        }
+
+        com.estatesync.model.Customer customer = customerRepository.findByPhone(phone)
+            .orElseGet(() -> {
+                com.estatesync.model.Customer newC = new com.estatesync.model.Customer();
+                newC.setName(name != null ? name : "Unknown");
+                newC.setEmail(email);
+                newC.setPhone(phone);
+                newC.setIsEmailVerified(true);
+                return customerRepository.save(newC);
+            });
+
+        String token = jwtUtil.generateCustomerToken(email, customer.getId());
+        return ResponseEntity.ok(Map.of("token", token, "customer", customer));
+    }
+
+    @PostMapping("/express-interest")
+    public ResponseEntity<?> expressInterest(@RequestBody InterestRequest request, 
+                                             @RequestParam(required = false) String otp,
+                                             @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        boolean isValidAuth = false;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7);
+                String role = jwtUtil.extractClaim(token, claims -> claims.get("role", String.class));
+                if ("CUSTOMER".equals(role)) {
+                    isValidAuth = true;
+                }
+            } catch (Exception e) {
+                // Invalid token
+            }
+        }
+
+        if (!isValidAuth) {
+            if (otp == null || !otpService.verifyOtp(request.getEmail(), otp)) {
+                return ResponseEntity.badRequest().body("Invalid OTP or Token");
+            }
+        }
+        
+        try {
+            boolean nameIgnored = leadService.processInterest(request);
+            if (nameIgnored) {
+                return ResponseEntity.ok(Map.of("message", "NAME_IGNORED"));
+            }
+            return ResponseEntity.ok(Map.of("message", "SUCCESS"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
+}

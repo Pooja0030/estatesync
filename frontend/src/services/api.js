@@ -1,0 +1,17 @@
+import axios from 'react';
+// Fixing axios import
+import axiosInstance from 'axios';
+
+const api = axiosInstance.create({
+  baseURL: `http://${window.location.hostname}:8080/api`,
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export default api;

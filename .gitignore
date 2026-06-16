@@ -1,0 +1,17 @@
+# Ignore zip files
+*.zip
+frontend.zip
+
+# Node
+node_modules/
+
+# Maven/Java
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+.vscode/
+*.swp

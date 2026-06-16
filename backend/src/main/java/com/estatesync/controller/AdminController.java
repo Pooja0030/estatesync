@@ -153,4 +153,43 @@ public class AdminController {
         customerService.generateAndEmailPassword(id);
         return ResponseEntity.ok(java.util.Map.of("message", "Password generated and emailed successfully."));
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.estatesync.repository.PropertyRepository propertyRepository;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.estatesync.repository.LeadRepository leadRepository;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.estatesync.repository.CustomerRepository customerRepository;
+    
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.estatesync.repository.UserRepository userRepository;
+
+    @GetMapping("/analytics")
+    public ResponseEntity<com.estatesync.dto.AnalyticsResponse> getAnalytics() {
+        
+        long totalProperties = propertyRepository.count();
+        long totalLeads = leadRepository.count();
+        long totalCustomers = customerRepository.count();
+        long totalEmployees = userRepository.count();
+
+        List<Object[]> leadsByStatusRaw = leadRepository.countLeadsByStatus();
+        List<java.util.Map<String, Object>> leadsByStatus = new java.util.ArrayList<>();
+        for (Object[] row : leadsByStatusRaw) {
+            leadsByStatus.add(java.util.Map.of("name", row[0].toString(), "value", row[1]));
+        }
+
+        List<Object[]> leadsByRegionRaw = leadRepository.countLeadsByRegion();
+        List<java.util.Map<String, Object>> leadsByRegion = new java.util.ArrayList<>();
+        for (Object[] row : leadsByRegionRaw) {
+            leadsByRegion.add(java.util.Map.of("name", row[0].toString(), "value", row[1]));
+        }
+
+        com.estatesync.dto.AnalyticsResponse response = new com.estatesync.dto.AnalyticsResponse(
+            totalProperties, totalLeads, totalCustomers, totalEmployees,
+            leadsByStatus, leadsByRegion
+        );
+        return ResponseEntity.ok(response);
+    }
 }

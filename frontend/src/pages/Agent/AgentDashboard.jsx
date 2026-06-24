@@ -3,8 +3,11 @@ import api from '../../services/api';
 import { Phone, MapPin, Building, Calendar, MoreVertical, MessageSquare, Clock, Search } from 'lucide-react';
 import OpportunityWorkspaceModal from './OpportunityWorkspaceModal';
 import Pagination from '../../components/Pagination';
+import { useLocation } from 'react-router-dom';
+import VisitsTab from '../../components/VisitsTab';
 
 export default function AgentDashboard() {
+  const location = useLocation();
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOpp, setSelectedOpp] = useState(null);
@@ -54,6 +57,10 @@ export default function AgentDashboard() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50 p-6">
+      {location.pathname.includes('/agent/visits') ? (
+        <VisitsTab role="AGENT" />
+      ) : (
+        <>
       <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Leads</h1>
@@ -167,6 +174,8 @@ export default function AgentDashboard() {
             }
           }}
         />
+      )}
+      </>
       )}
     </div>
   );

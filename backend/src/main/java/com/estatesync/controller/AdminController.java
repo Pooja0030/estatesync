@@ -9,6 +9,7 @@ import com.estatesync.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -300,6 +301,7 @@ public class AdminController {
         return ResponseEntity.ok(visitRepository.findAll());
     }
 
+    @Transactional
     @PutMapping("/visits/{id}")
     public ResponseEntity<?> updateVisit(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload, org.springframework.security.core.Authentication authentication) {
         com.estatesync.security.CustomUserDetails userDetails = (com.estatesync.security.CustomUserDetails) authentication.getPrincipal();
@@ -329,6 +331,7 @@ public class AdminController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @Transactional
     @PutMapping("/visits/{id}/status")
     public ResponseEntity<?> updateVisitStatus(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload, org.springframework.security.core.Authentication authentication) {
         com.estatesync.security.CustomUserDetails userDetails = (com.estatesync.security.CustomUserDetails) authentication.getPrincipal();

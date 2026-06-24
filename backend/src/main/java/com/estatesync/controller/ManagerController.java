@@ -7,6 +7,7 @@ import com.estatesync.service.ActivityService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 import java.util.List;
 import java.util.Set;
@@ -86,25 +87,25 @@ public class ManagerController {
             long agentClosed = allManagerOpps.stream().filter(o -> o.getAgent() != null && o.getAgent().getId().equals(agent.getId()) && 
                     (o.getStatus() == OpportunityStatus.CLOSED_WON || o.getStatus() == OpportunityStatus.CLOSED_LOST)).count();
             double agentConversion = agentTotal > 0 ? ((double) agentClosed / agentTotal) * 100 : 0.0;
-            
-            return Map.of(
-                "id", agent.getId(),
-                "name", agent.getName(),
-                "email", agent.getEmail(),
-                "phone", "",
-                "totalAssigned", agentTotal,
-                "closed", agentClosed,
-                "conversion", String.format("%.1f", agentConversion)
-            );
+                        java.util.Map<String, Object> map = new java.util.HashMap<>();
+              map.put("id", agent.getId());
+              map.put("name", agent.getName() != null ? agent.getName() : "Unknown");
+              map.put("email", agent.getEmail() != null ? agent.getEmail() : "N/A");
+              map.put("phone", "");
+              map.put("totalAssigned", agentTotal);
+              map.put("closed", agentClosed);
+              map.put("conversion", String.format("%.1f", agentConversion));
+              return map;
         }).collect(Collectors.toList());
 
-        return ResponseEntity.ok(Map.of(
-            "totalOpps", totalOpps,
-            "unassignedOpps", unassignedOpps,
-            "closedOpps", closedOpps,
-            "conversionRate", String.format("%.1f", conversionRate),
-            "agentPerformance", agentPerformance
-        ));
+          java.util.Map<String, Object> responseMap = new java.util.HashMap<>();
+          responseMap.put("totalOpps", totalOpps);
+          responseMap.put("unassignedOpps", unassignedOpps);
+          responseMap.put("closedOpps", closedOpps);
+          responseMap.put("conversionRate", String.format("%.1f", conversionRate));
+          responseMap.put("agentPerformance", agentPerformance);
+          
+          return ResponseEntity.ok(responseMap);
     }
 
     @GetMapping("/properties")
@@ -274,6 +275,7 @@ public class ManagerController {
         return ResponseEntity.ok().build();
     }
 
+    @Transactional
     @PutMapping("/visits/{id}")
     public ResponseEntity<?> updateVisit(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload, org.springframework.security.core.Authentication authentication) {
         com.estatesync.security.CustomUserDetails userDetails = (com.estatesync.security.CustomUserDetails) authentication.getPrincipal();
@@ -308,6 +310,7 @@ public class ManagerController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @Transactional
     @PutMapping("/visits/{id}/status")
     public ResponseEntity<?> updateVisitStatus(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload, org.springframework.security.core.Authentication authentication) {
         com.estatesync.security.CustomUserDetails userDetails = (com.estatesync.security.CustomUserDetails) authentication.getPrincipal();

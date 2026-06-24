@@ -20,7 +20,7 @@ export default function VisitsTab({ role = 'ADMIN' }) {
   const fetchVisits = async () => {
     setLoading(true);
     try {
-      const endpoint = role === 'ADMIN' ? '/admin/visits' : '/manager/visits';
+      const endpoint = role === 'ADMIN' ? '/admin/visits' : role === 'MANAGER' ? '/manager/visits' : '/agent/visits';
       const res = await api.get(endpoint);
       setVisits(res.data);
     } catch (err) {
@@ -32,7 +32,7 @@ export default function VisitsTab({ role = 'ADMIN' }) {
 
   const updateVisitStatus = async (visitId, newStatus) => {
     try {
-      const endpoint = role === 'ADMIN' ? `/admin/visits/${visitId}/status` : `/manager/visits/${visitId}/status`;
+      const endpoint = role === 'ADMIN' ? `/admin/visits/${visitId}/status` : role === 'MANAGER' ? `/manager/visits/${visitId}/status` : `/agent/visits/${visitId}/status`;
       await api.put(endpoint, { status: newStatus });
       toast.success('Visit status updated');
       fetchVisits();
@@ -59,7 +59,7 @@ export default function VisitsTab({ role = 'ADMIN' }) {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      const endpoint = role === 'ADMIN' ? `/admin/visits/${editingVisit.id}` : `/manager/visits/${editingVisit.id}`;
+      const endpoint = role === 'ADMIN' ? `/admin/visits/${editingVisit.id}` : role === 'MANAGER' ? `/manager/visits/${editingVisit.id}` : `/agent/visits/${editingVisit.id}`;
       // convert back to ISO string if needed, but backend expects LocalDateTime parsable string
       // The browser's datetime-local gives YYYY-MM-DDTHH:mm, which Java LocalDateTime.parse() accepts natively!
       await api.put(endpoint, { 
@@ -89,8 +89,28 @@ export default function VisitsTab({ role = 'ADMIN' }) {
       opp?.lead?.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       opp?.property?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       opp?.agent?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter ? visit.status === statusFilter : true;
+    let matchesStatus = true;
+    if (statusFilter === '') {
+      matchesStatus = visit.status !== 'CANCELLED';
+    } else if (statusFilter !== 'ALL') {
+      matchesStatus = visit.status === statusFilter;
+    }
     return matchesSearch && matchesStatus;
+  });
+
+  const sortedVisits = [...filteredVisits].sort((a, b) => {
+    // Sort logic: SCHEDULED first, then sort by visitDate (closest upcoming first for SCHEDULED, most recent first for others)
+    const aDate = new Date(a.visitDate).getTime();
+    const bDate = new Date(b.visitDate).getTime();
+    
+    if (a.status === 'SCHEDULED' && b.status !== 'SCHEDULED') return -1;
+    if (a.status !== 'SCHEDULED' && b.status === 'SCHEDULED') return 1;
+    
+    if (a.status === 'SCHEDULED' && b.status === 'SCHEDULED') {
+       return aDate - bDate; // Ascending: nearest future date first
+    }
+    
+    return bDate - aDate; // Descending for COMPLETED/CANCELLED
   });
 
   if (loading) return <div className="text-gray-500 py-8">Loading visits...</div>;
@@ -116,7 +136,8 @@ export default function VisitsTab({ role = 'ADMIN' }) {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="">All Statuses</option>
+            <option value="">Active Visits</option>
+            <option value="ALL">All Statuses</option>
             <option value="SCHEDULED">Scheduled</option>
             <option value="COMPLETED">Completed</option>
             <option value="CANCELLED">Cancelled</option>
@@ -131,13 +152,13 @@ export default function VisitsTab({ role = 'ADMIN' }) {
               <th className="py-3 px-6 font-medium">Date & Time</th>
               <th className="py-3 px-6 font-medium">Customer</th>
               <th className="py-3 px-6 font-medium">Property</th>
-              <th className="py-3 px-6 font-medium">Agent</th>
+              {role !== 'AGENT' && <th className="py-3 px-6 font-medium">Agent</th>}
               <th className="py-3 px-6 font-medium">Status</th>
               <th className="py-3 px-6 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filteredVisits.map((visit) => {
+            {sortedVisits.map((visit) => {
               const opp = visit.opportunity;
               return (
                 <tr key={visit.id} className="hover:bg-gray-50 transition-colors">

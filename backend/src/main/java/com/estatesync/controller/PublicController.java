@@ -17,17 +17,21 @@ import java.util.Map;
 public class PublicController {
 
     private final PropertyRepository propertyRepository;
+    private final com.estatesync.service.PropertyService propertyService;
     private final CustomerRepository customerRepository;
     private final OtpService otpService;
     private final LeadService leadService;
+    private final com.estatesync.service.RegionService regionService;
     private final com.estatesync.security.JwtUtil jwtUtil;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
-    public PublicController(PropertyRepository propertyRepository, CustomerRepository customerRepository, OtpService otpService, LeadService leadService, com.estatesync.security.JwtUtil jwtUtil, org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
+    public PublicController(PropertyRepository propertyRepository, com.estatesync.service.PropertyService propertyService, CustomerRepository customerRepository, OtpService otpService, LeadService leadService, com.estatesync.service.RegionService regionService, com.estatesync.security.JwtUtil jwtUtil, org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.propertyRepository = propertyRepository;
+        this.propertyService = propertyService;
         this.customerRepository = customerRepository;
         this.otpService = otpService;
         this.leadService = leadService;
+        this.regionService = regionService;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
     }
@@ -42,6 +46,11 @@ public class PublicController {
             org.springframework.data.domain.Pageable pageable) {
         // Force status to be AVAILABLE for public queries
         return ResponseEntity.ok(propertyService.getFilteredProperties("AVAILABLE", type, regionId, minPrice, maxPrice, search, pageable));
+    }
+
+    @GetMapping("/regions")
+    public ResponseEntity<List<com.estatesync.model.Region>> getRegions() {
+        return ResponseEntity.ok(regionService.getAllRegions());
     }
 
     @PostMapping("/send-otp")

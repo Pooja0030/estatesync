@@ -26,7 +26,8 @@ export default function Layout() {
         ];
       case 'AGENT':
         return [
-          { label: 'Dashboard', path: '/agent', icon: <LayoutDashboard size={20} /> }
+          { label: 'Dashboard', path: '/agent', icon: <LayoutDashboard size={20} /> },
+          { label: 'Visits', path: '/agent/visits', icon: <Calendar size={20} /> }
         ];
       case 'ADMIN':
         return [
@@ -52,7 +53,12 @@ export default function Layout() {
         <nav className="flex-1 p-4 space-y-2">
           {links.map((link) => {
             const isManagerDefault = user?.role === 'MANAGER' && location.pathname === '/manager' && link.path === '/manager/leads';
-            const isActive = location.pathname.includes(link.path) || isManagerDefault;
+            const isAgentDefault = user?.role === 'AGENT' && (location.pathname === '/agent' || location.pathname === '/agent/') && link.path === '/agent';
+            let isActive = location.pathname.includes(link.path);
+            if (link.path === '/agent') {
+               isActive = location.pathname === '/agent' || location.pathname === '/agent/';
+            }
+            isActive = isActive || isManagerDefault || isAgentDefault;
             return (
               <Link 
                 key={link.path}
